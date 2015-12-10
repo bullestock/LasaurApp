@@ -99,7 +99,7 @@ DataHandler = {
     // write machinable gcode, organize by passes
     // header
     var glist = [];
-    glist.push("G90\nM80\n");
+    glist.push("G90\nM82\nM80\n");
     glist.push("G0F"+app_settings.max_seek_speed+"\n");
     // passes
     for (var i=0; i<this.passes.length; i++) {
@@ -130,7 +130,7 @@ DataHandler = {
       }
     }
     // footer
-    glist.push("M81\nS0\nG0X0Y0F"+app_settings.max_seek_speed+"\n");
+    glist.push("M81\nS0\nG0X0Y0F"+app_settings.max_seek_speed+"\nM83\n");
     // alert(JSON.stringify(glist.join('')))
     return glist.join('');
   },

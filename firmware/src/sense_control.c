@@ -90,7 +90,9 @@ void control_air_assist(bool enable) {
 void control_aux1_assist(bool enable) {
   if (enable) {
     ASSIST_PORT |= (1 << AUX1_ASSIST_BIT);
+    _delay_ms(AUX1_ASSIST_ON_DELAY);
   } else {
+    _delay_ms(AUX1_ASSIST_OFF_DELAY);
     ASSIST_PORT &= ~(1 << AUX1_ASSIST_BIT);
   }  
 }
