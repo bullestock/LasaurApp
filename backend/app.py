@@ -3,8 +3,10 @@ import sys, os, time
 import glob, json, argparse, copy
 import tempfile
 import socket, webbrowser
+import hashlib, re
 from wsgiref.simple_server import WSGIRequestHandler, make_server
 from bottle import *
+from beaker.middleware import SessionMiddleware
 from serial_manager import SerialManager
 from flash import flash_upload, reset_atmega
 from build import build_firmware
@@ -23,6 +25,8 @@ COOKIE_KEY = 'secret_key_jkn23489hsdf'
 FIRMWARE = "LasaurGrbl.hex"
 TOLERANCE = 0.08
 
+# <cardid>: { user: <username>, approved: <bool> }
+card_data = { 'ABCD': { 'user': 'Torsten', 'approved': True } }
 
 if os.name == 'nt': #sys.platform == 'win32':
     GUESS_PREFIX = "Arduino"
@@ -92,7 +96,18 @@ def run_with_callback(host, port):
     """ Start a wsgiref server instance with control over the main loop.
         This is a function that I derived from the bottle.py run()
     """
+    debug(True)
     handler = default_app()
+    handler.catchall = False
+    session_opts = {
+        'session.type': 'file',
+        'session.cookie_expires': True,
+        'session.data_dir': './data',
+        'session.secret': 'myverysecretstring',
+        'session.auto': True
+    }
+
+    handler = SessionMiddleware(handler, session_opts)
     server = make_server(host, port, handler, handler_class=HackedWSGIRequestHandler)
     server.timeout = 0.01
     server.quiet = True
@@ -143,8 +158,6 @@ def run_with_callback(host, port):
 #     for line in fp:
 #         SerialManager.queue_gcode_line(line)
 #     return "Longtest queued."
-
-
 
 @route('/css/:path#.+#')
 def static_css_handler(path):
@@ -215,6 +228,8 @@ def library_list_handler():
 
 @route('/queue/save', method='POST')
 def queue_save_handler():
+    if not check_session():
+        return '0'
     ret = '0'
     if 'job_name' in request.forms and 'job_data' in request.forms:
         name = request.forms.get('job_name')
@@ -296,10 +311,16 @@ def queue_unstar_handler(name):
 
 @route('/')
 @route('/index.html')
-@route('/app.html')
 def default_handler():
-    return static_file('app.html', root=os.path.join(resources_dir(), 'frontend') )
+    return static_file('login.html', root=os.path.join(resources_dir(), 'frontend') )
 
+@route('/main.html')
+def logged_in():
+    if not check_session():
+        print 'No access'
+        return static_file('noaccess.html', root=os.path.join(resources_dir(), 'frontend') )
+    print 'Returning app.html'
+    return static_file('app.html', root=os.path.join(resources_dir(), 'frontend') )
 
 @route('/stash_download', method='POST')
 def stash_download():
@@ -383,6 +404,8 @@ def set_pause(flag):
 @route('/flash_firmware')
 @route('/flash_firmware/:firmware_file')
 def flash_firmware_handler(firmware_file=FIRMWARE):
+    if not check_session():
+        return 'Access denied'
     global SERIAL_PORT, GUESS_PREFIX
     return_code = 1
     if SerialManager.is_connected():
@@ -457,6 +480,8 @@ def reset_atmega_handler():
 
 @route('/gcode', method='POST')
 def job_submit_handler():
+    if not check_session():
+        return 'Access denied'
     job_data = request.forms.get('job_data')
     if job_data and SerialManager.is_connected():
         SerialManager.queue_gcode(job_data)
@@ -513,6 +538,59 @@ def file_reader():
     return "You missed a field."
 
 
+@route('/rfid')
+def query_rfid():
+    """Check if an RFID tag is present."""
+    print "query_rfid"
+    #data = { 'id': 'ABCD', 'user': 'Torsten', 'approved': False }
+    card_id = 'ABCD'
+    data = card_data[card_id]
+    if data['approved']:
+        ua = request.environ.get('HTTP_USER_AGENT')
+        s = request.environ.get('beaker.session')
+        # XSS protection as we might print this value
+        ua = re.sub('[^a-zA-Z0-9]+', '', ua);
+        s['useragent'] = ua
+        m = hashlib.sha512()
+        m.update(card_id)
+        m.update(ua);
+        s['user_name'] = data['user']
+        s['session_id'] = m.hexdigest()
+        s.save()
+        dye()
+        print "APPROVED"
+    return json.dumps(data)
+
+def get_card_id(user_name):
+    for key in card_data:
+        if card_data[key]['user'] == user_name:
+            return key
+    print 'Error: User %d not found' % user_name
+    return ''
+
+def check_session():
+    print 'Check session'
+    s = request.environ.get('beaker.session')
+    if not s:
+        print 'Error: No session'
+        return False
+    print 'User: %s' % s['user_name']
+    id = s['session_id']
+    ua = request.environ.get('HTTP_USER_AGENT')
+    ua = re.sub('[^a-zA-Z0-9]+', '', ua);
+    m = hashlib.sha512()
+    local_id = get_card_id(s['user_name'])
+    print 'local ID'
+    print local_id
+    m.update(local_id)
+    m.update(ua);
+    if m.hexdigest() == id:
+        print 'Session OK'
+        return True
+    print 'Error: Session ID mismatch'
+    print m.hexdigest()
+    print id
+    return False
 
 # def check_user_credentials(username, password):
 #     return username in allowed and allowed[username] == password
