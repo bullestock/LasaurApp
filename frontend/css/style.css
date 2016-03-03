@@ -34,3 +34,7 @@ div.log_error {
 button.active-strong {
   border: 1px solid #aaaaaa;
 }
+
+.no-close .ui-dialog-titlebar-close {
+  display: none;
+}
