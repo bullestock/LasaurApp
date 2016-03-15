@@ -1,4 +1,4 @@
-
+import serial
 import sys, os, time
 import glob, json, argparse, copy
 import tempfile
@@ -27,7 +27,10 @@ TOLERANCE = 0.08
 AUTH = True
 
 # <cardid>: { user: <username>, approved: <bool> }
-card_data = { 'ABCD': { 'user': 'Torsten', 'approved': True } }
+card_data = {
+    '0000BB96C5E8': { 'user': 'Torsten', 'approved': True },
+    '120048E99B28': { 'user': 'En taber', 'approved': False }
+}
 
 if os.name == 'nt': #sys.platform == 'win32':
     GUESS_PREFIX = "Arduino"
@@ -111,7 +114,7 @@ def run_with_callback(host, port):
     handler = SessionMiddleware(handler, session_opts)
     server = make_server(host, port, handler, handler_class=HackedWSGIRequestHandler)
     server.timeout = 0.01
-    server.quiet = True
+    #server.quiet = True
     print "Persistent storage root is: " + storage_dir()
     print "-----------------------------------------------------------------------------"
     print "Bottle server starting up ..."
@@ -314,12 +317,14 @@ def queue_unstar_handler(name):
 @route('/index.html')
 @route('/app.html')
 def default_handler():
+    print 'index/app'
     if AUTH and not check_session():
         return static_file('login.html', root=os.path.join(resources_dir(), 'frontend') )
     return static_file('app.html', root=os.path.join(resources_dir(), 'frontend') )
         
 @route('/main.html')
 def logged_in():
+    print 'main'
     if not check_session():
         print 'No access'
         return static_file('noaccess.html', root=os.path.join(resources_dir(), 'frontend') )
@@ -541,13 +546,41 @@ def file_reader():
         return jsondata
     return "You missed a field."
 
+class RfidReader(object):
+    
+    def __init__(self, serial_port = "/dev/ttyUSB0"):
+        self.ser = serial.Serial(
+            port = serial_port,
+            baudrate = 9600,
+            timeout = 1.0)
+            
+    def getid(self):
+        STX = 2
+        ETX = 3
+        b = bytearray()
+        gotStart = False
+        while True:
+            d = self.ser.read(1)
+            if len(d) == 0:
+                return ""
+            c = bytearray(d)[0]
+            if c == STX:
+                gotStart = True
+            elif c == ETX:
+                return b.decode()
+            else:
+                b.append(c)
 
 @route('/rfid')
 def query_rfid():
     """Check if an RFID tag is present."""
     print "query_rfid"
-    #data = { 'id': 'ABCD', 'user': 'Torsten', 'approved': False }
-    card_id = 'ABCD'
+    reader = RfidReader()
+    card_id = reader.getid()
+    print "Card ID %s" % card_id
+    if not card_id in card_data:
+        unknown_card = { 'user': 'Unknown user', 'approved': False }
+        return json.dumps(unknown_card)
     data = card_data[card_id]
     if data['approved']:
         ua = request.environ.get('HTTP_USER_AGENT')
@@ -573,11 +606,17 @@ def get_card_id(user_name):
 
 def check_session():
     if not AUTH:
+        print 'Auth disabled'
         return True
     print 'Check session'
     s = request.environ.get('beaker.session')
     if not s:
         print 'Error: No session'
+        return False
+    print 'Beaker session'
+    print s
+    if not 'user_name' in s:
+        print 'No user name in session'
         return False
     print 'User: %s' % s['user_name']
     id = s['session_id']
