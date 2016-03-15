@@ -24,6 +24,7 @@ CONFIG_FILE = "lasaurapp.conf"
 COOKIE_KEY = 'secret_key_jkn23489hsdf'
 FIRMWARE = "LasaurGrbl.hex"
 TOLERANCE = 0.08
+AUTH = True
 
 # <cardid>: { user: <username>, approved: <bool> }
 card_data = { 'ABCD': { 'user': 'Torsten', 'approved': True } }
@@ -103,7 +104,7 @@ def run_with_callback(host, port):
         'session.type': 'file',
         'session.cookie_expires': True,
         'session.data_dir': './data',
-        'session.secret': 'myverysecretstring',
+        'session.secret': 'myverysecretstring', # FIXME
         'session.auto': True
     }
 
@@ -311,9 +312,12 @@ def queue_unstar_handler(name):
 
 @route('/')
 @route('/index.html')
+@route('/app.html')
 def default_handler():
-    return static_file('login.html', root=os.path.join(resources_dir(), 'frontend') )
-
+    if AUTH and not check_session():
+        return static_file('login.html', root=os.path.join(resources_dir(), 'frontend') )
+    return static_file('app.html', root=os.path.join(resources_dir(), 'frontend') )
+        
 @route('/main.html')
 def logged_in():
     if not check_session():
@@ -557,7 +561,6 @@ def query_rfid():
         s['user_name'] = data['user']
         s['session_id'] = m.hexdigest()
         s.save()
-        dye()
         print "APPROVED"
     return json.dumps(data)
 
@@ -569,6 +572,8 @@ def get_card_id(user_name):
     return ''
 
 def check_session():
+    if not AUTH:
+        return True
     print 'Check session'
     s = request.environ.get('beaker.session')
     if not s:
