@@ -280,7 +280,7 @@ void gcode_process_line() {
       printString("Y");
       printFloat(stepper_get_position_y());       
       // version
-      printPgmString(PSTR("V" LASAURGRBL_VERSION "-bullestock"));
+      printPgmString(PSTR("V" LASAURGRBL_VERSION "-bullestock-1"));
     }
     printString("\n");
   }

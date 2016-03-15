@@ -42,9 +42,9 @@
   #define CONFIG_Z_STEPS_PER_MM 32.80839895 //microsteps/mm (no integers, e.g. use 80.0 instead of 80)
 #else
 #  ifdef TB6600
-// TB6600: 16 microsteps
-#    define CONFIG_X_STEPS_PER_MM 107.095046843 //microsteps/mm (no integers, e.g. use 80.0 instead of 80)
-#    define CONFIG_Y_STEPS_PER_MM 109.529025181 //microsteps/mm (no integers, e.g. use 80.0 instead of 80)
+// TB6600: 8 microsteps
+#    define CONFIG_X_STEPS_PER_MM (107.095046843/2) //microsteps/mm (no integers, e.g. use 80.0 instead of 80)
+#    define CONFIG_Y_STEPS_PER_MM (109.529025181/2) //microsteps/mm (no integers, e.g. use 80.0 instead of 80)
 #    define CONFIG_Z_STEPS_PER_MM 33.33333333 //microsteps/mm (no integers, e.g. use 80.0 instead of 80)
 #  else
   // Geckodrive
