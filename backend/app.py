@@ -373,15 +373,16 @@ def get_status():
     card_id = reader.getid()
     print "Card ID %s" % card_id
     username = ''
-    if not card_id in card_data:
-        username = 'Unknown user'
-        user_approved = False
-    else:
-        data = card_data[card_id]
-        if data['approved']:
-            user_approved = True
-        else:
+    if len(card_id) == 12:
+        if not card_id in card_data:
+            username = 'Unknown user'
             user_approved = False
+        else:
+            data = card_data[card_id]
+            if data['approved']:
+                user_approved = True
+            else:
+                user_approved = False
     status['username'] = username
     return json.dumps(status)
 
