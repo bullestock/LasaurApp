@@ -320,9 +320,10 @@ $(document).ready(function(){
         $('#lasaurapp_version').html(data.lasaurapp_version);
         lasaurapp_version_reported = true;
       }
-      if (data.username) {
-        $('#user_btn').html(data.username);
-      }
+      if (data.username)
+        $('#user_name').html(data.username);
+      else
+        $('#user_name').html('No card inserted');
       // schedule next hardware poll
       setTimeout(function() {poll_hardware_status()}, 4000);
     }).error(function() {

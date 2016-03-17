@@ -27,8 +27,8 @@ AUTH = True
 
 # <cardid>: { user: <username>, approved: <bool> }
 card_data = {
-    '0000BB96C5E8': { 'user': 'Torsten', 'approved': True },
-    '120048E99B28': { 'user': 'En taber', 'approved': False }
+    '0000BB96C5E8': { 'name': 'Torsten', 'approved': True },
+    '120048E99B28': { 'name': 'Ingen', 'approved': False }
 }
 
 user_approved = False
@@ -373,16 +373,27 @@ def get_status():
     card_id = reader.getid()
     print "Card ID %s" % card_id
     username = ''
-    if len(card_id) == 12:
+    global user_approved
+    if len(card_id) == 0:
+        print "No card inserted"
+        username = 'No card inserted'
+        user_approved = False
+    elif len(card_id) == 12:
         if not card_id in card_data:
-            username = 'Unknown user'
+            print "Card not found"
+            username = 'Unknown card'
             user_approved = False
         else:
+            print "Card found"
             data = card_data[card_id]
+            username = data['name']
             if data['approved']:
                 user_approved = True
             else:
                 user_approved = False
+            print "Approved: %s" % user_approved
+    else:
+        print "Bad length: %d" % len(card_id)
     status['username'] = username
     return json.dumps(status)
 
@@ -489,9 +500,12 @@ def reset_atmega_handler():
 
 @route('/gcode', method='POST')
 def job_submit_handler():
-    if not user_approved:
-        return 'Access denied'
     job_data = request.forms.get('job_data')
+    print "Approved: %s" % user_approved
+    print "Data: %s" % job_data
+    if not user_approved and job_data[0] != "!":
+        print 'User not approved'
+        return 'Access denied'
     if job_data and SerialManager.is_connected():
         SerialManager.queue_gcode(job_data)
         return "__ok__"
@@ -568,7 +582,7 @@ class RfidReader(object):
                 gotStart = True
             elif c == ETX:
                 return b.decode()
-            else:
+            elif c >= 32 and c < 127:
                 b.append(c)
 
 # def check_user_credentials(username, password):
