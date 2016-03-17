@@ -217,6 +217,8 @@ $(document).ready(function(){
   // get hardware status
   function poll_hardware_status() {
     $.getJSON('/status', function(data) {
+      console.log('Status:');
+      console.dir(data);
       // pause status
       if (data.paused) {
         pause_btn_state = true;
@@ -317,6 +319,9 @@ $(document).ready(function(){
         $().uxmessage('notice', "LasaurApp v" + data.lasaurapp_version);
         $('#lasaurapp_version').html(data.lasaurapp_version);
         lasaurapp_version_reported = true;
+      }
+      if (data.username) {
+        $('#user_btn').html(data.username);
       }
       // schedule next hardware poll
       setTimeout(function() {poll_hardware_status()}, 4000);

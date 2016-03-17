@@ -6,7 +6,6 @@ import socket, webbrowser
 import hashlib, re
 from wsgiref.simple_server import WSGIRequestHandler, make_server
 from bottle import *
-from beaker.middleware import SessionMiddleware
 from serial_manager import SerialManager
 from flash import flash_upload, reset_atmega
 from build import build_firmware
@@ -31,6 +30,8 @@ card_data = {
     '0000BB96C5E8': { 'user': 'Torsten', 'approved': True },
     '120048E99B28': { 'user': 'En taber', 'approved': False }
 }
+
+user_approved = False
 
 if os.name == 'nt': #sys.platform == 'win32':
     GUESS_PREFIX = "Arduino"
@@ -103,15 +104,6 @@ def run_with_callback(host, port):
     debug(True)
     handler = default_app()
     handler.catchall = False
-    session_opts = {
-        'session.type': 'file',
-        'session.cookie_expires': True,
-        'session.data_dir': './data',
-        'session.secret': 'myverysecretstring', # FIXME
-        'session.auto': True
-    }
-
-    handler = SessionMiddleware(handler, session_opts)
     server = make_server(host, port, handler, handler_class=HackedWSGIRequestHandler)
     server.timeout = 0.01
     #server.quiet = True
@@ -232,8 +224,6 @@ def library_list_handler():
 
 @route('/queue/save', method='POST')
 def queue_save_handler():
-    if not check_session():
-        return '0'
     ret = '0'
     if 'job_name' in request.forms and 'job_data' in request.forms:
         name = request.forms.get('job_name')
@@ -317,20 +307,8 @@ def queue_unstar_handler(name):
 @route('/index.html')
 @route('/app.html')
 def default_handler():
-    print 'index/app'
-    if AUTH and not check_session():
-        return static_file('login.html', root=os.path.join(resources_dir(), 'frontend') )
     return static_file('app.html', root=os.path.join(resources_dir(), 'frontend') )
         
-@route('/main.html')
-def logged_in():
-    print 'main'
-    if not check_session():
-        print 'No access'
-        return static_file('noaccess.html', root=os.path.join(resources_dir(), 'frontend') )
-    print 'Returning app.html'
-    return static_file('app.html', root=os.path.join(resources_dir(), 'frontend') )
-
 @route('/stash_download', method='POST')
 def stash_download():
     """Create a download file event from string."""
@@ -352,6 +330,8 @@ def download(filename, dlname):
 
 @route('/serial/:connect')
 def serial_handler(connect):
+    if not user_approved:
+        return 'Access denied'
     if connect == '1':
         # print 'js is asking to connect serial'
         if not SerialManager.is_connected():
@@ -389,11 +369,27 @@ def get_status():
     status = copy.deepcopy(SerialManager.get_hardware_status())
     status['serial_connected'] = SerialManager.is_connected()
     status['lasaurapp_version'] = VERSION
+    reader = RfidReader()
+    card_id = reader.getid()
+    print "Card ID %s" % card_id
+    username = ''
+    if not card_id in card_data:
+        username = 'Unknown user'
+        user_approved = False
+    else:
+        data = card_data[card_id]
+        if data['approved']:
+            user_approved = True
+        else:
+            user_approved = False
+    status['username'] = username
     return json.dumps(status)
 
 
 @route('/pause/:flag')
 def set_pause(flag):
+    if not user_approved:
+        return 'Access denied'
     # returns pause status
     if flag == '1':
         if SerialManager.set_pause(True):
@@ -413,8 +409,7 @@ def set_pause(flag):
 @route('/flash_firmware')
 @route('/flash_firmware/:firmware_file')
 def flash_firmware_handler(firmware_file=FIRMWARE):
-    if not check_session():
-        return 'Access denied'
+    return 'Access denied'
     global SERIAL_PORT, GUESS_PREFIX
     return_code = 1
     if SerialManager.is_connected():
@@ -464,6 +459,8 @@ def flash_firmware_handler(firmware_file=FIRMWARE):
 
 @route('/build_firmware')
 def build_firmware_handler():
+    if not user_approved:
+        return 'Access denied'
     ret = []
     buildname = "LasaurGrbl_from_src"
     firmware_dir = os.path.join(resources_dir(), 'firmware')
@@ -483,13 +480,15 @@ def build_firmware_handler():
 
 @route('/reset_atmega')
 def reset_atmega_handler():
+    if not user_approved:
+        return 'Access denied'
     reset_atmega(HARDWARE)
     return '1'
 
 
 @route('/gcode', method='POST')
 def job_submit_handler():
-    if not check_session():
+    if not user_approved:
         return 'Access denied'
     job_data = request.forms.get('job_data')
     if job_data and SerialManager.is_connected():
@@ -570,71 +569,6 @@ class RfidReader(object):
                 return b.decode()
             else:
                 b.append(c)
-
-@route('/rfid')
-def query_rfid():
-    """Check if an RFID tag is present."""
-    print "query_rfid"
-    reader = RfidReader()
-    card_id = reader.getid()
-    print "Card ID %s" % card_id
-    if not card_id in card_data:
-        unknown_card = { 'user': 'Unknown user', 'approved': False }
-        return json.dumps(unknown_card)
-    data = card_data[card_id]
-    if data['approved']:
-        ua = request.environ.get('HTTP_USER_AGENT')
-        s = request.environ.get('beaker.session')
-        # XSS protection as we might print this value
-        ua = re.sub('[^a-zA-Z0-9]+', '', ua);
-        s['useragent'] = ua
-        m = hashlib.sha512()
-        m.update(card_id)
-        m.update(ua);
-        s['user_name'] = data['user']
-        s['session_id'] = m.hexdigest()
-        s.save()
-        print "APPROVED"
-    return json.dumps(data)
-
-def get_card_id(user_name):
-    for key in card_data:
-        if card_data[key]['user'] == user_name:
-            return key
-    print 'Error: User %d not found' % user_name
-    return ''
-
-def check_session():
-    if not AUTH:
-        print 'Auth disabled'
-        return True
-    print 'Check session'
-    s = request.environ.get('beaker.session')
-    if not s:
-        print 'Error: No session'
-        return False
-    print 'Beaker session'
-    print s
-    if not 'user_name' in s:
-        print 'No user name in session'
-        return False
-    print 'User: %s' % s['user_name']
-    id = s['session_id']
-    ua = request.environ.get('HTTP_USER_AGENT')
-    ua = re.sub('[^a-zA-Z0-9]+', '', ua);
-    m = hashlib.sha512()
-    local_id = get_card_id(s['user_name'])
-    print 'local ID'
-    print local_id
-    m.update(local_id)
-    m.update(ua);
-    if m.hexdigest() == id:
-        print 'Session OK'
-        return True
-    print 'Error: Session ID mismatch'
-    print m.hexdigest()
-    print id
-    return False
 
 # def check_user_credentials(username, password):
 #     return username in allowed and allowed[username] == password
