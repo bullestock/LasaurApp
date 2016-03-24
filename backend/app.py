@@ -4,6 +4,7 @@ import glob, json, argparse, copy
 import tempfile
 import socket, webbrowser
 import hashlib, re
+from rfidreader import RfidReader
 from wsgiref.simple_server import WSGIRequestHandler, make_server
 from bottle import *
 from serial_manager import SerialManager
@@ -97,13 +98,14 @@ class HackedWSGIRequestHandler(WSGIRequestHandler):
         pass
 
 
-def run_with_callback(host, port):
+def run_with_callback(host, port, rfidreader):
     """ Start a wsgiref server instance with control over the main loop.
         This is a function that I derived from the bottle.py run()
     """
     debug(True)
     handler = default_app()
     handler.catchall = False
+    handler.rfidreader = rfidreader
     server = make_server(host, port, handler, handler_class=HackedWSGIRequestHandler)
     server.timeout = 0.01
     #server.quiet = True
@@ -369,7 +371,6 @@ def get_status():
     status = copy.deepcopy(SerialManager.get_hardware_status())
     status['serial_connected'] = SerialManager.is_connected()
     status['lasaurapp_version'] = VERSION
-    reader = RfidReader()
     card_id = reader.getid()
     print "Card ID %s" % card_id
     username = ''
@@ -559,31 +560,6 @@ def file_reader():
         # print "returning %d items as %d bytes." % (len(res['boundarys']), len(jsondata))
         return jsondata
     return "You missed a field."
-
-class RfidReader(object):
-    
-    def __init__(self, serial_port = "/dev/ttyUSB0"):
-        self.ser = serial.Serial(
-            port = serial_port,
-            baudrate = 9600,
-            timeout = 1.0)
-            
-    def getid(self):
-        STX = 2
-        ETX = 3
-        b = bytearray()
-        gotStart = False
-        while True:
-            d = self.ser.read(1)
-            if len(d) == 0:
-                return ""
-            c = bytearray(d)[0]
-            if c == STX:
-                gotStart = True
-            elif c == ETX:
-                return b.decode()
-            elif c >= 32 and c < 127:
-                b.append(c)
 
 # def check_user_credentials(username, password):
 #     return username in allowed and allowed[username] == password
@@ -843,7 +819,9 @@ else:
             else:
                 print "ERROR: Failed to flash Arduino."
     else:
+        reader = RfidReader()
+        reader.start()
         if args.host_on_all_interfaces:
-            run_with_callback('', NETWORK_PORT)
+            run_with_callback('', NETWORK_PORT, reader)
         else:
-            run_with_callback('127.0.0.1', NETWORK_PORT)
+            run_with_callback('127.0.0.1', NETWORK_PORT, reader)
