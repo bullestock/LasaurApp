@@ -607,6 +607,8 @@ argparser.add_argument('--raspberrypi', dest='raspberrypi', action='store_true',
                     default=False, help='use this for running on Raspberry Pi')
 argparser.add_argument('-m', '--match', dest='match',
                     default=GUESS_PREFIX, help='match serial device with this string')
+argparser.add_argument('-r', '--rfid', dest='disable_rfid', action='store_true',
+                       default=False, help='disable RFID reader')
 args = argparser.parse_args()
 
 
@@ -819,8 +821,10 @@ else:
             else:
                 print "ERROR: Failed to flash Arduino."
     else:
-        reader = RfidReader()
-        reader.start()
+        reader = None
+        if not args.disable_rfid:
+            reader = RfidReader()
+            reader.start()
         if args.host_on_all_interfaces:
             run_with_callback('', NETWORK_PORT, reader)
         else:
