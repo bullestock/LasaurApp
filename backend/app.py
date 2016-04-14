@@ -523,7 +523,7 @@ def job_submit_handler():
         return 'Access denied'
     if job_data and SerialManager.is_connected():
         SerialManager.queue_gcode(job_data)
-        logger.log(current_user, 'Run job: '+job_data[:30])
+        logger.log(current_user, 'Run job: '+re.sub('[\s+]', ' ', job_data)[:30])
         return "__ok__"
     else:
         return "serial disconnected"
