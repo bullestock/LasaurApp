@@ -15,7 +15,10 @@ class RfidReader(threading.Thread):
             timeout = 1.0)
             
     def getid(self):
-        return self.tag_id
+        self.lock.acquire()
+        id = self.tag_id
+        self.lock.release()
+        return id
     
     def read_id(self):
         STX = 2

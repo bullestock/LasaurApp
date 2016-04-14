@@ -4,6 +4,7 @@ import glob, json, argparse, copy
 import tempfile
 import socket, webbrowser
 import hashlib, re
+from logger import AccessLogger
 from rfidreader import RfidReader
 from wsgiref.simple_server import WSGIRequestHandler, make_server
 from bottle import *
@@ -33,6 +34,7 @@ card_data = {
 }
 
 user_approved = False
+current_user = ''
 
 if os.name == 'nt': #sys.platform == 'win32':
     GUESS_PREFIX = "Arduino"
@@ -98,7 +100,7 @@ class HackedWSGIRequestHandler(WSGIRequestHandler):
         pass
 
 
-def run_with_callback(host, port, rfidreader):
+def run_with_callback(host, port, rfidreader, logger):
     """ Start a wsgiref server instance with control over the main loop.
         This is a function that I derived from the bottle.py run()
     """
@@ -106,6 +108,7 @@ def run_with_callback(host, port, rfidreader):
     handler = default_app()
     handler.catchall = False
     handler.rfidreader = rfidreader
+    handler.logger = logger
     server = make_server(host, port, handler, handler_class=HackedWSGIRequestHandler)
     server.timeout = 0.01
     #server.quiet = True
@@ -332,6 +335,7 @@ def download(filename, dlname):
 
 @route('/serial/:connect')
 def serial_handler(connect):
+    global user_approved
     if not user_approved:
         return 'Access denied'
     if connect == '1':
@@ -375,10 +379,14 @@ def get_status():
     print "Card ID %s" % card_id
     username = ''
     global user_approved
+    global current_user
     if len(card_id) == 0:
         print "No card inserted"
         username = 'No card inserted'
         user_approved = False
+        if current_user != '':
+            logger.log(current_user, 'Card removed')
+        current_user = ''
     elif len(card_id) == 12:
         if not card_id in card_data:
             print "Card not found"
@@ -392,6 +400,9 @@ def get_status():
                 user_approved = True
             else:
                 user_approved = False
+            if current_user == '':
+                logger.log(username, 'Card inserted')
+            current_user = username
             print "Approved: %s" % user_approved
     else:
         print "Bad length: %d" % len(card_id)
@@ -401,6 +412,7 @@ def get_status():
 
 @route('/pause/:flag')
 def set_pause(flag):
+    global user_approved
     if not user_approved:
         return 'Access denied'
     # returns pause status
@@ -472,6 +484,7 @@ def flash_firmware_handler(firmware_file=FIRMWARE):
 
 @route('/build_firmware')
 def build_firmware_handler():
+    global user_approved
     if not user_approved:
         return 'Access denied'
     ret = []
@@ -493,6 +506,7 @@ def build_firmware_handler():
 
 @route('/reset_atmega')
 def reset_atmega_handler():
+    global user_approved
     if not user_approved:
         return 'Access denied'
     reset_atmega(HARDWARE)
@@ -502,13 +516,14 @@ def reset_atmega_handler():
 @route('/gcode', method='POST')
 def job_submit_handler():
     job_data = request.forms.get('job_data')
-    print "Approved: %s" % user_approved
-    print "Data: %s" % job_data
+    global user_approved
+    global current_user
     if not user_approved and job_data[0] != "!":
         print 'User not approved'
         return 'Access denied'
     if job_data and SerialManager.is_connected():
         SerialManager.queue_gcode(job_data)
+        logger.log(current_user, 'Run job: '+job_data[:30])
         return "__ok__"
     else:
         return "serial disconnected"
@@ -825,7 +840,8 @@ else:
         if not args.disable_rfid:
             reader = RfidReader()
             reader.start()
+        logger = AccessLogger()
         if args.host_on_all_interfaces:
-            run_with_callback('', NETWORK_PORT, reader)
+            run_with_callback('', NETWORK_PORT, reader, logger)
         else:
-            run_with_callback('127.0.0.1', NETWORK_PORT, reader)
+            run_with_callback('127.0.0.1', NETWORK_PORT, reader, logger)
