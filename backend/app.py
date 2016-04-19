@@ -27,13 +27,14 @@ FIRMWARE = "LasaurGrbl.hex"
 TOLERANCE = 0.08
 AUTH = True
 
-# <cardid>: { user: <username>, approved: <bool> }
+# <cardid>: { user: <username>, approved: <bool>, admin: <bool> }
 card_data = {
-    '0000BB96C5E8': { 'name': 'Torsten', 'approved': True },
+    '0000BB96C5E8': { 'name': 'Torsten', 'approved': True, 'admin': True },
     '120048E99B28': { 'name': 'Ingen', 'approved': False }
 }
 
 user_approved = False
+user_admin = False
 current_user = ''
 
 if os.name == 'nt': #sys.platform == 'win32':
@@ -379,6 +380,7 @@ def get_status():
     print "Card ID %s" % card_id
     username = ''
     global user_approved
+    global user_admin
     global current_user
     if len(card_id) == 0:
         print "No card inserted"
@@ -400,6 +402,10 @@ def get_status():
                 user_approved = True
             else:
                 user_approved = False
+            if data['admin']:
+                user_admin = True
+            else:
+                user_admin = False
             if current_user == '':
                 logger.log(username, 'Card inserted')
             current_user = username
@@ -485,7 +491,8 @@ def flash_firmware_handler(firmware_file=FIRMWARE):
 @route('/build_firmware')
 def build_firmware_handler():
     global user_approved
-    if not user_approved:
+    global user_admin
+    if not user_approved and user_admin:
         return 'Access denied'
     ret = []
     buildname = "LasaurGrbl_from_src"
