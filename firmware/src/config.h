@@ -175,12 +175,6 @@
 #define MINIMUM_STEPS_PER_MINUTE 1600U // (steps/min) - Integer value only
 // 1600 @ 32step_per_mm = 50mm/min
 
-// How many milliseconds to wait after turning on AUX1
-#define AUX1_ASSIST_ON_DELAY    5000
-// How many milliseconds to wait before turning off AUX1
-#define AUX1_ASSIST_OFF_DELAY   2000
-
-
 #define X_AXIS 0
 #define Y_AXIS 1
 #define Z_AXIS 2
