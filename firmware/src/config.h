@@ -25,7 +25,7 @@
 
 // Version number
 // (must not contain capital letters)
-#define LASAURGRBL_VERSION "14.11b"
+#define LASAURGRBL_VERSION "14.11b-bullestock-3"
 // build for new driveboard hardware
 #define DRIVEBOARD
 
@@ -174,6 +174,9 @@
 // never reach its target. This parameter should always be greater than zero.
 #define MINIMUM_STEPS_PER_MINUTE 1600U // (steps/min) - Integer value only
 // 1600 @ 32step_per_mm = 50mm/min
+
+// How many milliseconds to wait after turning on AUX2
+#define AUX2_ASSIST_ON_DELAY    5000
 
 #define X_AXIS 0
 #define Y_AXIS 1

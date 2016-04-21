@@ -99,6 +99,7 @@ void control_aux1_assist(bool enable) {
   void control_aux2_assist(bool enable) {
     if (enable) {
       ASSIST_PORT |= (1 << AUX2_ASSIST_BIT);
+      _delay_ms(AUX2_ASSIST_ON_DELAY);
     } else {
       ASSIST_PORT &= ~(1 << AUX2_ASSIST_BIT);
     }  
