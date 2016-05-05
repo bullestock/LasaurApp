@@ -376,12 +376,14 @@ def get_status():
     status = copy.deepcopy(SerialManager.get_hardware_status())
     status['serial_connected'] = SerialManager.is_connected()
     status['lasaurapp_version'] = VERSION
-    card_id = reader.getid()
-    print "Card ID %s" % card_id
-    username = ''
     global user_approved
     global user_admin
     global current_user
+    if args.disable_rfid:
+        return json.dumps(status)
+    card_id = reader.getid()
+    print "Card ID %s" % card_id
+    username = ''
     if len(card_id) == 0:
         print "No card inserted"
         username = 'No card inserted'
