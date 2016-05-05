@@ -115,9 +115,10 @@ function update_progress() {
 
 
 function open_bigcanvas(scale, deselectedColors) {
-  var w = scale * app_settings.canvas_dimensions[0];
-  var h = scale * app_settings.canvas_dimensions[1];
-  $('#container').before('<a id="close_big_canvas" href="#"><canvas id="big_canvas" width="'+w+'px" height="'+h+'px" style="border:1px dashed #aaaaaa;"></canvas></a>');
+    var w = scale * app_settings.canvas_dimensions[0];
+    var h = scale * app_settings.canvas_dimensions[1];
+    // Create two canvases on top of each other. The canvas with z-index -1 is used for the drawing, the one with z-index 0 is used for displaying coordinates.
+    $('#container').before('<div id="canvas_container" style="position: relative;"><canvas id="big_canvas" width="'+w+'px" height="'+h+'px" style="position: absolute; left: 0; top: 0; z-index: -1; border:1px dashed #aaaaaa;"></canvas><a id="close_big_canvas" href="#"><canvas id="big_canvas_overlay" width="'+w+'px" height="'+h+'px" style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas></a></div>');
   var mid = $('body').innerWidth()/2.0-30;
   $('#close_big_canvas').click(function(e){
     close_bigcanvas();
@@ -133,15 +134,30 @@ function open_bigcanvas(scale, deselectedColors) {
       return true;
     }
   });
-  // $('#big_canvas').focus();
   $('#container').hide();
   var bigcanvas = new Canvas('#big_canvas');
-  // DataHandler.draw(bigcanvas, 4*app_settings.to_canvas_scale, getDeselectedColors());
   if (deselectedColors === undefined) {
     DataHandler.draw(bigcanvas, scale*app_settings.to_canvas_scale);
   } else {
     DataHandler.draw(bigcanvas, scale*app_settings.to_canvas_scale, deselectedColors);
   }
+  var bigcanvasoverlay = new Canvas('#big_canvas_overlay');
+  $('#big_canvas_overlay').mousemove(function(e){
+      var cnt = document.getElementById('canvas_container');
+      var x = e.pageX - cnt.offsetLeft;
+      var y = e.pageY - cnt.offsetTop;
+      var x_phy = x*app_settings.to_physical_scale/scale;
+      var y_phy = y*app_settings.to_physical_scale/scale;
+      var coords_text;
+      coords_text = '(' + x_phy.toFixed(0) + ', ' + y_phy.toFixed(0) + ')';
+      var c = document.getElementById('big_canvas_overlay');
+      var ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.fillStyle = '#FF0000';
+      ctx.font = "bold 12pt Arial";//'bold 30 px Arial';
+      ctx.fillText(coords_text, x+25, y+10);
+      return false;
+  });
 }
 
 
