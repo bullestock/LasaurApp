@@ -12,7 +12,7 @@ from serial_manager import SerialManager
 from flash import flash_upload, reset_atmega
 from build import build_firmware
 from filereaders import read_svg, read_dxf, read_ngc
-
+from card_data import card_data
 
 APPNAME = "lasaurapp"
 VERSION = "14.11b"
@@ -27,15 +27,10 @@ FIRMWARE = "LasaurGrbl.hex"
 TOLERANCE = 0.08
 AUTH = True
 
-# <cardid>: { user: <username>, approved: <bool>, admin: <bool> }
-card_data = {
-    '0000BB96C5E8': { 'name': 'Torsten', 'approved': True, 'admin': True },
-    '120048E99B28': { 'name': 'Ingen', 'approved': False }
-}
-
 user_approved = False
 user_admin = False
 current_user = ''
+current_cardid = ''
 
 if os.name == 'nt': #sys.platform == 'win32':
     GUESS_PREFIX = "Arduino"
@@ -384,6 +379,7 @@ def get_status():
     card_id = reader.getid()
     print "Card ID %s" % card_id
     username = ''
+    global current_cardid
     if len(card_id) == 0:
         print "No card inserted"
         username = 'No card inserted'
@@ -396,6 +392,8 @@ def get_status():
             print "Card not found"
             username = 'Unknown card'
             user_approved = False
+            if card_id != current_cardid:
+                logger.log(card_id, 'Unknown card')
         else:
             print "Card found"
             data = card_data[card_id]
@@ -412,6 +410,7 @@ def get_status():
                 logger.log(username, 'Card inserted')
             current_user = username
             print "Approved: %s" % user_approved
+        current_cardid = card_id
     else:
         print "Bad length: %d" % len(card_id)
     status['username'] = username

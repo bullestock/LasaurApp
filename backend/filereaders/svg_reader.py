@@ -13,9 +13,9 @@ from .svg_tag_reader import SVGTagReader
 
 logging.basicConfig()
 log = logging.getLogger("svg_reader")
-# log.setLevel(logging.DEBUG)
+log.setLevel(logging.DEBUG)
 # log.setLevel(logging.INFO)
-log.setLevel(logging.WARN)
+# log.setLevel(logging.WARN)
 
 
 try:
@@ -203,7 +203,7 @@ class SVGReader:
                 if unit == 'mm':
                     # great, the svg file already uses mm
                     pass
-                    log.info("px2mm by svg mm unit")
+                    log.info("px2mm by svg mm unit: %d" % self.px2mm)
                 elif unit == 'in':
                     # prime for inch to mm conversion
                     self.px2mm *= 25.4
@@ -247,7 +247,7 @@ class SVGReader:
 
         # 5. Fall back on px unit DPIs default value
         if not self.px2mm:
-            log.warn("Failed to determin physical dimensions -> defaulting to 90dpi.")
+            log.warn("Failed to determine physical dimensions -> defaulting to 90dpi.")
             self.px2mm = 25.4/90.0
 
         # adjust tolerances to px units
