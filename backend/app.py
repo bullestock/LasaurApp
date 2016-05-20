@@ -441,8 +441,11 @@ def set_pause(flag):
 @route('/flash_firmware')
 @route('/flash_firmware/:firmware_file')
 def flash_firmware_handler(firmware_file=FIRMWARE):
-    return 'Access denied'
-    global SERIAL_PORT, GUESS_PREFIX
+    global user_approved
+    global user_admin
+    if not user_approved and user_admin:
+        return 'Access denied'
+    logger.log(current_user, 'Flashing ATMEGA')
     return_code = 1
     if SerialManager.is_connected():
         SerialManager.close()
@@ -531,7 +534,7 @@ def job_submit_handler():
         return 'Access denied'
     if job_data and SerialManager.is_connected():
         SerialManager.queue_gcode(job_data)
-        logger.log(current_user, 'Run job: '+re.sub('[\s+]', ' ', job_data)[:30])
+        logger.log(current_user, 'Run job: '+re.sub('[\s+]', ' ', job_data)[:50])
         return "__ok__"
     else:
         return "serial disconnected"
@@ -546,6 +549,7 @@ def queue_pct_done_handler():
 def file_reader():
     """Parse SVG string."""
     filename = request.forms.get('filename')
+    logger.log(current_user, 'Import file: '+filename)
     filedata = request.forms.get('filedata')
     dimensions = request.forms.get('dimensions')
     try:
@@ -849,6 +853,7 @@ else:
             reader = RfidReader()
             reader.start()
         logger = AccessLogger()
+        logger.log('', 'Backend started')
         if args.host_on_all_interfaces:
             run_with_callback('', NETWORK_PORT, reader, logger)
         else:
