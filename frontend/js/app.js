@@ -340,6 +340,8 @@ $(document).ready(function(){
         $('#user_name').html(data.username);
       else
         $('#user_name').html('No card inserted');
+      if (data.shutdown_msg)
+        $().uxmessage('warning', data.shutdown_msg);
       // schedule next hardware poll
       setTimeout(function() {poll_hardware_status()}, 4000);
     }).error(function() {
@@ -434,7 +436,11 @@ $(document).ready(function(){
   }); 
   //\\\\\\ serial connect and pause button \\\\\\\\
   
-  
+  $("#pwroff_btn").click(function(e){  
+      $.get('/pwroff', function(data) {
+      });
+  });
+
   $("#cancel_btn").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#cancel_btn").click(function(e){
     var gcode = '!\n'  // ! is enter stop state char

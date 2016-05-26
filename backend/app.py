@@ -13,6 +13,7 @@ from flash import flash_upload, reset_atmega
 from build import build_firmware
 from filereaders import read_svg, read_dxf, read_ngc
 from card_data import card_data
+from powertimer import PowerTimer
 
 APPNAME = "lasaurapp"
 VERSION = "14.11b"
@@ -31,6 +32,7 @@ user_approved = False
 user_admin = False
 current_user = ''
 current_cardid = ''
+shutdown_msg = ''
 
 if os.name == 'nt': #sys.platform == 'win32':
     GUESS_PREFIX = "Arduino"
@@ -335,7 +337,7 @@ def serial_handler(connect):
     if not user_approved:
         return 'Access denied'
     if connect == '1':
-        # print 'js is asking to connect serial'
+        print 'js is asking to connect serial'
         if not SerialManager.is_connected():
             try:
                 global SERIAL_PORT, BITSPERSECOND, GUESS_PREFIX
@@ -352,7 +354,7 @@ def serial_handler(connect):
                 print "Failed to connect to serial."
                 return ""
     elif connect == '0':
-        # print 'js is asking to close serial'
+        print 'js is asking to close serial'
         if SerialManager.is_connected():
             if SerialManager.close(): return "1"
             else: return ""
@@ -370,6 +372,7 @@ def serial_handler(connect):
 def get_status():
     status = copy.deepcopy(SerialManager.get_hardware_status())
     status['serial_connected'] = SerialManager.is_connected()
+    print "Connected: %d" % SerialManager.is_connected()
     status['lasaurapp_version'] = VERSION
     global user_approved
     global user_admin
@@ -414,6 +417,9 @@ def get_status():
     else:
         print "Bad length: %d" % len(card_id)
     status['username'] = username
+    global shutdown_msg
+    status['shutdown_msg'] = shutdown_msg
+    shutdown_msg = ''
     return json.dumps(status)
 
 
@@ -436,7 +442,10 @@ def set_pause(flag):
         else:
             return '0'
 
-
+@route('/pwroff')
+def poweroff():
+    GPIO.output(pinExt1, GPIO.HIGH)
+    return ''
 
 @route('/flash_firmware')
 @route('/flash_firmware/:firmware_file')
@@ -611,8 +620,10 @@ def file_reader():
 #     else:
 #         return "Already logged out."
 
-
-
+def warn(msg):
+    global shutdown_msg
+    shutdown_msg = msg
+    
 ### Setup Argument Parser
 argparser = argparse.ArgumentParser(description='Run LasaurApp.', prog='lasaurapp')
 argparser.add_argument('port', metavar='serial_port', nargs='?', default=False,
@@ -763,7 +774,7 @@ elif args.raspberrypi:
     GPIO.setmode(GPIO.BCM)  # use chip pin number
     pinSense = 7
     pinReset = 2
-    pinExt1 = 3
+    pinExt1 = 25
     pinExt2 = 4
     pinExt3 = 17
     pinTX = 14
@@ -774,6 +785,11 @@ elif args.raspberrypi:
     # atmega reset pin
     GPIO.setup(pinReset, GPIO.OUT)
     GPIO.output(pinReset, GPIO.HIGH)
+    # power off pin
+    GPIO.setup(pinExt1, GPIO.OUT)
+    GPIO.output(pinExt1, GPIO.LOW)
+    powertimer = PowerTimer(pinExt1, warn)
+    powertimer.start()
     # no need to setup the serial pins
     # although /boot/cmdline.txt and /etc/inittab needs
     # to be edited to deactivate the serial terminal login
