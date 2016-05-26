@@ -98,7 +98,7 @@ class HackedWSGIRequestHandler(WSGIRequestHandler):
         pass
 
 
-def run_with_callback(host, port, rfidreader, logger):
+def run_with_callback(host, port, rfidreader, logger, powertimer):
     """ Start a wsgiref server instance with control over the main loop.
         This is a function that I derived from the bottle.py run()
     """
@@ -107,6 +107,7 @@ def run_with_callback(host, port, rfidreader, logger):
     handler.catchall = False
     handler.rfidreader = rfidreader
     handler.logger = logger
+    handler.powertimer = powertimer
     server = make_server(host, port, handler, handler_class=HackedWSGIRequestHandler)
     server.timeout = 0.01
     #server.quiet = True
@@ -370,6 +371,7 @@ def serial_handler(connect):
 
 @route('/status')
 def get_status():
+    powertimer.reset()
     status = copy.deepcopy(SerialManager.get_hardware_status())
     status['serial_connected'] = SerialManager.is_connected()
     print "Connected: %d" % SerialManager.is_connected()
@@ -871,6 +873,6 @@ else:
         logger = AccessLogger()
         logger.log('', 'Backend started')
         if args.host_on_all_interfaces:
-            run_with_callback('', NETWORK_PORT, reader, logger)
+            run_with_callback('', NETWORK_PORT, reader, logger, powertimer)
         else:
-            run_with_callback('127.0.0.1', NETWORK_PORT, reader, logger)
+            run_with_callback('127.0.0.1', NETWORK_PORT, reader, logger, powertimer)
