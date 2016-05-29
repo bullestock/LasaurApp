@@ -446,7 +446,9 @@ def set_pause(flag):
 
 @route('/pwroff')
 def poweroff():
-    GPIO.output(pinExt1, GPIO.HIGH)
+    print "Shutting down..."
+    if args.raspberrypi:
+        GPIO.output(pinExt1, GPIO.HIGH)
     return ''
 
 @route('/flash_firmware')
