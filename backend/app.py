@@ -13,7 +13,6 @@ from flash import flash_upload, reset_atmega
 from build import build_firmware
 from filereaders import read_svg, read_dxf, read_ngc
 from card_data import card_data
-from powertimer import PowerTimer
 
 APPNAME = "lasaurapp"
 VERSION = "14.11b"
@@ -371,7 +370,8 @@ def serial_handler(connect):
 
 @route('/status')
 def get_status():
-    powertimer.reset()
+    if args.raspberrypi:
+        powertimer.reset()
     status = copy.deepcopy(SerialManager.get_hardware_status())
     status['serial_connected'] = SerialManager.is_connected()
     print "Connected: %d" % SerialManager.is_connected()
@@ -655,6 +655,7 @@ args = argparser.parse_args()
 
 print "LasaurApp " + VERSION
 
+powertimer = None
 if args.beaglebone:
     HARDWARE = 'beaglebone'
     NETWORK_PORT = 80
@@ -772,6 +773,7 @@ elif args.raspberrypi:
     NETWORK_PORT = 80
     SERIAL_PORT = "/dev/ttyAMA0"
     import RPi.GPIO as GPIO
+    from powertimer import PowerTimer
     # GPIO.setwarnings(False) # surpress warnings
     GPIO.setmode(GPIO.BCM)  # use chip pin number
     pinSense = 7
