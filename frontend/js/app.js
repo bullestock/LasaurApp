@@ -435,8 +435,11 @@ $(document).ready(function(){
     e.preventDefault();   
   }); 
   //\\\\\\ serial connect and pause button \\\\\\\\
-  
+
   $("#pwroff_btn").click(function(e){  
+      $('#pwroff_modal').modal('show');
+  });
+  $("#really_pwroff_btn").click(function(e){  
       $.get('/pwroff', function(data) {
       });
   });
