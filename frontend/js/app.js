@@ -440,6 +440,8 @@ $(document).ready(function(){
       $('#pwroff_modal').modal('show');
   });
   $("#really_pwroff_btn").click(function(e){  
+      $('#pwroff_modal').modal('hide');
+      $('#off_modal').modal('show');
       $.get('/pwroff', function(data) {
       });
   });
