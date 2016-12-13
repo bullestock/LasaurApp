@@ -9,10 +9,19 @@ class RfidReader(threading.Thread):
         self.daemon = True
         self.lock = threading.Lock()
         self.tag_id = ''
-        self.ser = serial.Serial(
-            port = serial_port,
-            baudrate = 9600,
-            timeout = 1.0)
+        # Open port with default baud rate
+        self.ser = serial.Serial(serial_port)
+        # Reset Arduino
+        self.ser.setDTR(False)
+        time.sleep(1)
+        self.ser.flushInput()
+        self.ser.setDTR(True)
+        # Reopen with proper baud rate
+        self.ser = serial.Serial(port = serial_port,
+            baudrate = 57600,
+            timeout = 1.0,
+            rtscts = 1,
+            dsrdtr = False)
             
     def getid(self):
         self.lock.acquire()
@@ -21,41 +30,20 @@ class RfidReader(threading.Thread):
         return id
     
     def read_id(self):
-        STX = 2
-        ETX = 3
-        b = bytearray()
-        gotStart = False
-        self.ser.flushInput()
-        while True:
-            d = self.ser.read(1)
-            if len(d) == 0:
-                return b
-            c = bytearray(d)[0]
-            if c == STX:
-                gotStart = True
-            elif c == ETX:
-                return b.decode()
-            elif gotStart and c >= 32 and c < 127:
-                b.append(c)
+        line = self.ser.readline()
+        line = line.strip()
+        if len(line) == 10:
+            return line
+        return ''
 
     def run(self):
-        bad_reads = 0
+        print("run")
         while True:
             i = self.read_id()
-            if len(i) == 12:
-                self.lock.acquire()
-                self.tag_id = i
-                self.lock.release()
-                bad_reads = 0
-            else:
-                bad_reads = bad_reads+1
-            if bad_reads >= 10:
-                # No card found for a while, clear ID
-                self.lock.acquire()
-                self.tag_id = ''
-                self.lock.release()
-                
-            time.sleep(1)
+            self.lock.acquire()
+            self.tag_id = i
+            self.lock.release()
+            time.sleep(0.1)
             
 if __name__ == "__main__":
     print "init"
@@ -63,7 +51,7 @@ if __name__ == "__main__":
     l.start()
     
     for x in range(0, 20):
-        print l.getid()
+        print("ID %s" % l.getid())
         time.sleep(2)
         
         
