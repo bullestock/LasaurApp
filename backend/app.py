@@ -392,7 +392,7 @@ def get_status():
         if current_user != '':
             logger.log(current_user, 'Card removed')
         current_user = ''
-    elif len(card_id) == 12:
+    elif len(card_id) == 10:
         if not card_id in card_data:
             print "Card not found"
             username = 'Unknown card'
@@ -586,6 +586,7 @@ def file_reader():
 
     if filename and filedata:
         print "You uploaded %s (%d bytes)." % (filename, len(filedata))
+        powertimer.disable()
         if filename[-4:] in ['.dxf', '.DXF']:
             res = read_dxf(filedata, TOLERANCE, optimize)
         elif filename[-4:] in ['.svg', '.SVG']:
@@ -594,7 +595,7 @@ def file_reader():
             res = read_ngc(filedata, TOLERANCE, optimize)
         else:
             print "error: unsupported file format"
-
+        powertimer.enable()
         # print boundarys
         jsondata = json.dumps(res)
         # print "returning %d items as %d bytes." % (len(res['boundarys']), len(jsondata))
