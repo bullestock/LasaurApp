@@ -25,7 +25,7 @@
 
 // Version number
 // (must not contain capital letters)
-#define LASAURGRBL_VERSION "14.11b-bullestock-3"
+#define LASAURGRBL_VERSION "14.11b-bullestock-4"
 // build for new driveboard hardware
 #define DRIVEBOARD
 

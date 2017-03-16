@@ -381,8 +381,7 @@ uint8_t gcode_execute_line(char *line) {
         }
         break;
       case 'S':
-        // HACK for constraining power to 60W
-        gc.nominal_laser_intensity = min(value, 191);
+        gc.nominal_laser_intensity = value;
         break; 
       case 'L':  // G10 qualifier 
       l = trunc(value);
