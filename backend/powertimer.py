@@ -11,6 +11,7 @@ class PowerTimer(threading.Thread):
         self.pin = pin
         self.callback = callback
         self.idle_count = 0
+        self.enabled = True
 
     def reset(self):
         self.idle_count = 0
@@ -21,18 +22,24 @@ class PowerTimer(threading.Thread):
         last_left = -1
         while True:
             time.sleep(60)
-            self.idle_count = self.idle_count+1
-            print "PowerTimer idle count: %d" % self.idle_count
-            if self.idle_count > self.WARNING_TIME:
-                left = self.MAX_IDLE_TIME-self.idle_count
-                plural = 's'
-                if left < 2:
-                    plural = ''
-                if (left > 0) and (left != last_left):
-                    self.callback("Shutting down in %d minute%s" % (left, plural))
+            if self.enabled:
+                self.idle_count = self.idle_count+1
+                print "PowerTimer idle count: %d" % self.idle_count
+                if self.idle_count > self.WARNING_TIME:
+                    left = self.MAX_IDLE_TIME-self.idle_count
+                    plural = 's'
+                    if left < 2:
+                        plural = ''
+                    if (left > 0) and (left != last_left):
+                        self.callback("Shutting down in %d minute%s" % (left, plural))
                     last_left = left
-            if self.idle_count > self.MAX_IDLE_TIME:
-                GPIO.output(self.pin, GPIO.HIGH)
-                time.sleep(60)
+                if self.idle_count > self.MAX_IDLE_TIME:
+                    GPIO.output(self.pin, GPIO.HIGH)
+                    time.sleep(60)
                 
+    def disable(self):
+        self.enabled = False
+
+    def enable(self):
+        self.enabled = True
         
