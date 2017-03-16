@@ -336,6 +336,7 @@ $(document).ready(function(){
         $('#lasaurapp_version').html(data.lasaurapp_version);
         lasaurapp_version_reported = true;
       }
+      $(this).username = data.username;
       if (data.username)
         $('#user_name').html(data.username);
       else
@@ -436,8 +437,15 @@ $(document).ready(function(){
   }); 
   //\\\\\\ serial connect and pause button \\\\\\\\
 
-  $("#pwroff_btn").click(function(e){  
-      $('#pwroff_modal').modal('show');
+  $("#pwroff_btn").click(function(e){
+      if ($(this).username)
+      {
+          $('#no_pwroff_modal').modal('show');
+      }
+      else
+      {
+          $('#pwroff_modal').modal('show');
+      }
   });
   $("#really_pwroff_btn").click(function(e){  
       $('#pwroff_modal').modal('hide');

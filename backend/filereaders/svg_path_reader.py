@@ -298,6 +298,7 @@ class SVGPathReader:
 
 
     def addCubicBezier(self, subpath, x1, y1, x2, y2, x3, y3, x4, y4, level):
+        #print("addCubicBezier %d" % level)
         # for details see:
         # http://www.antigrain.com/research/adaptive_bezier/index.html
         # based on DeCasteljau Algorithm
@@ -306,7 +307,7 @@ class SVGPathReader:
         # This mean we subdivide more and have more curve points in
         # curvy areas and less in flatter areas of the curve.
 
-        if level > 18:
+        if level > 14:
             # protect from deep recursion cases
             # max 2**18 = 262144 segments
             return
