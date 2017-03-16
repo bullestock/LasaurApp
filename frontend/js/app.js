@@ -3,6 +3,7 @@ var hardware_ready_state = false;
 var firmware_version_reported = false;
 var lasaurapp_version_reported = false;
 var progress_not_yet_done_flag = false;
+var current_user = '';
 
 
 (function($){
@@ -336,7 +337,7 @@ $(document).ready(function(){
         $('#lasaurapp_version').html(data.lasaurapp_version);
         lasaurapp_version_reported = true;
       }
-      $(this).username = data.username;
+      current_user = data.username;
       if (data.username)
         $('#user_name').html(data.username);
       else
@@ -438,7 +439,7 @@ $(document).ready(function(){
   //\\\\\\ serial connect and pause button \\\\\\\\
 
   $("#pwroff_btn").click(function(e){
-      if ($(this).username)
+      if (current_user && (current_user.length > 0))
       {
           $('#no_pwroff_modal').modal('show');
       }

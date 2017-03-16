@@ -387,7 +387,7 @@ def get_status():
     global current_cardid
     if len(card_id) == 0:
         print "No card inserted"
-        username = 'No card inserted'
+        username = ''
         user_approved = False
         if current_user != '':
             logger.log(current_user, 'Card removed')
