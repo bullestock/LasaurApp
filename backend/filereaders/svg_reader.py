@@ -339,7 +339,7 @@ class SVGReader:
 
 
 if __name__ == "__main__":
-    with open(os.path.join(svgpath, "rocket_full.svg")) as f:
+    with open(os.path.join(svgpath, "~/projects/chairbot/mearm/mearm2.svg")) as f:
         svgstring = f.read()
     svgReader = SVGReader(0.08, [1220,610])
     svgReader.parse(svg_string, forced_dpi)
