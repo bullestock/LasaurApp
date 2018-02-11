@@ -389,7 +389,7 @@ def get_status():
         print "No card inserted"
         username = ''
         user_approved = False
-        if current_user != '':
+        if current_user != '' and logger:
             logger.log(current_user, 'Card removed')
         current_user = ''
     elif len(card_id) == 10:
@@ -562,7 +562,8 @@ def queue_pct_done_handler():
 def file_reader():
     """Parse SVG string."""
     filename = request.forms.get('filename')
-    logger.log(current_user, 'Import file: '+filename)
+    if logger:
+        logger.log(current_user, 'Import file: '+filename)
     filedata = request.forms.get('filedata')
     dimensions = request.forms.get('dimensions')
     try:
@@ -586,7 +587,8 @@ def file_reader():
 
     if filename and filedata:
         print "You uploaded %s (%d bytes)." % (filename, len(filedata))
-        powertimer.disable()
+        if args.raspberrypi:
+            powertimer.disable()
         if filename[-4:] in ['.dxf', '.DXF']:
             res = read_dxf(filedata, TOLERANCE, optimize)
         elif filename[-4:] in ['.svg', '.SVG']:
@@ -595,7 +597,8 @@ def file_reader():
             res = read_ngc(filedata, TOLERANCE, optimize)
         else:
             print "error: unsupported file format"
-        powertimer.enable()
+        if args.raspberrypi:
+            powertimer.enable()
         # print boundarys
         jsondata = json.dumps(res)
         # print "returning %d items as %d bytes." % (len(res['boundarys']), len(jsondata))
@@ -872,11 +875,12 @@ else:
                 print "ERROR: Failed to flash Arduino."
     else:
         reader = None
+        logger = None
         if not args.disable_rfid:
             reader = RfidReader()
             reader.start()
-        logger = AccessLogger()
-        logger.log('', 'Backend started')
+            logger = AccessLogger()
+            logger.log('', 'Backend started')
         if args.host_on_all_interfaces:
             run_with_callback('', NETWORK_PORT, reader, logger, powertimer)
         else:
