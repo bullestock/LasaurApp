@@ -585,7 +585,8 @@ def file_reader():
 
     if filename and filedata:
         print "You uploaded %s (%d bytes)." % (filename, len(filedata))
-        powertimer.disable()
+        if args.raspberrypi:
+            powertimer.disable()
         if filename[-4:] in ['.dxf', '.DXF']:
             res = read_dxf(filedata, TOLERANCE, optimize)
         elif filename[-4:] in ['.svg', '.SVG']:
@@ -594,7 +595,8 @@ def file_reader():
             res = read_ngc(filedata, TOLERANCE, optimize)
         else:
             print "error: unsupported file format"
-        powertimer.enable()
+        if args.raspberrypi:
+            powertimer.enable()
         # print boundarys
         jsondata = json.dumps(res)
         # print "returning %d items as %d bytes." % (len(res['boundarys']), len(jsondata))
@@ -871,6 +873,7 @@ else:
                 print "ERROR: Failed to flash Arduino."
     else:
         reader = None
+        logger = None
         if not args.disable_rfid:
             reader = RfidReader()
             reader.start()
