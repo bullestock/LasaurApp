@@ -4,7 +4,6 @@ import glob, json, argparse, copy
 import tempfile
 import socket, webbrowser
 import hashlib, re
-from logger import AccessLogger
 from rfidreader import RfidReader
 from wsgiref.simple_server import WSGIRequestHandler, make_server
 from bottle import *
@@ -12,7 +11,7 @@ from serial_manager import SerialManager
 from flash import flash_upload, reset_atmega
 from build import build_firmware
 from filereaders import read_svg, read_dxf, read_ngc
-from card_data import card_data
+from rest import RestClient
 
 APPNAME = "lasaurapp"
 VERSION = "14.11b"
@@ -29,7 +28,8 @@ AUTH = True
 
 user_approved = False
 user_admin = False
-current_user = ''
+current_user_name = ''
+current_user_id = 0
 current_cardid = ''
 shutdown_msg = ''
 
@@ -97,7 +97,7 @@ class HackedWSGIRequestHandler(WSGIRequestHandler):
         pass
 
 
-def run_with_callback(host, port, rfidreader, logger, powertimer):
+def run_with_callback(host, port, rfidreader, restclient, powertimer):
     """ Start a wsgiref server instance with control over the main loop.
         This is a function that I derived from the bottle.py run()
     """
@@ -105,7 +105,7 @@ def run_with_callback(host, port, rfidreader, logger, powertimer):
     handler = default_app()
     handler.catchall = False
     handler.rfidreader = rfidreader
-    handler.logger = logger
+    handler.restclient = restclient
     handler.powertimer = powertimer
     server = make_server(host, port, handler, handler_class=HackedWSGIRequestHandler)
     server.timeout = 0.01
@@ -378,7 +378,8 @@ def get_status():
     status['lasaurapp_version'] = VERSION
     global user_approved
     global user_admin
-    global current_user
+    global current_user_id
+    global current_user_name
     if args.disable_rfid:
         return json.dumps(status)
     card_id = reader.getid()
@@ -389,31 +390,30 @@ def get_status():
         print "No card inserted"
         username = ''
         user_approved = False
-        if current_user != '':
-            logger.log(current_user, 'Card removed')
-        current_user = ''
+        if current_user_name != '':
+            restclient.log(current_user_id, 'Card removed')
+        current_user_name = ''
+        current_user_id = 0
     elif len(card_id) == 10:
-        if not card_id in card_data:
+        r = restclient.check_card(card_id)
+        if r['id'] == 0:
             print "Card not found"
             username = 'Unknown card'
             user_approved = False
             if card_id != current_cardid:
-                logger.log(card_id, 'Unknown card')
+                restclient.log(0, 'Unknown card: %s' % card_id)
         else:
             print "Card found"
-            data = card_data[card_id]
-            username = data['name']
-            if data['approved']:
+            username = r['name']
+            if r['allowed']:
                 user_approved = True
             else:
                 user_approved = False
-            if data['admin']:
-                user_admin = True
-            else:
-                user_admin = False
-            if current_user == '':
-                logger.log(username, 'Card inserted')
-            current_user = username
+            user_admin = False #!!
+            if current_user_name == '':
+                restclient.log(current_user_id, 'Access granted')
+            current_user_id = r['id']
+            current_user_name = username
             print "Approved: %s" % user_approved
         current_cardid = card_id
     else:
@@ -458,7 +458,6 @@ def flash_firmware_handler(firmware_file=FIRMWARE):
     global user_admin
     if not user_approved and user_admin:
         return 'Access denied'
-    logger.log(current_user, 'Flashing ATMEGA')
     return_code = 1
     if SerialManager.is_connected():
         SerialManager.close()
@@ -547,7 +546,7 @@ def job_submit_handler():
         return 'Access denied'
     if job_data and SerialManager.is_connected():
         SerialManager.queue_gcode(job_data)
-        logger.log(current_user, 'Run job: '+re.sub('[\s+]', ' ', job_data)[:50])
+        restclient.log(current_user_id, 'Run job: '+re.sub('[\s+]', ' ', job_data)[:50])
         return "__ok__"
     else:
         return "serial disconnected"
@@ -562,7 +561,7 @@ def queue_pct_done_handler():
 def file_reader():
     """Parse SVG string."""
     filename = request.forms.get('filename')
-    logger.log(current_user, 'Import file: '+filename)
+    restclient.log(current_user_id, 'Import file: '+filename)
     filedata = request.forms.get('filedata')
     dimensions = request.forms.get('dimensions')
     try:
@@ -875,9 +874,9 @@ else:
         if not args.disable_rfid:
             reader = RfidReader()
             reader.start()
-        logger = AccessLogger()
-        logger.log('', 'Backend started')
+        restclient = RestClient()
+        restclient.log(0, 'Backend started')
         if args.host_on_all_interfaces:
-            run_with_callback('', NETWORK_PORT, reader, logger, powertimer)
+            run_with_callback('', NETWORK_PORT, reader, restclient, powertimer)
         else:
-            run_with_callback('127.0.0.1', NETWORK_PORT, reader, logger, powertimer)
+            run_with_callback('127.0.0.1', NETWORK_PORT, reader, restclient, powertimer)
