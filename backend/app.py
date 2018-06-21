@@ -410,9 +410,9 @@ def get_status():
             else:
                 user_approved = False
             user_admin = False #!!
+            current_user_id = r['id']
             if current_user_name == '':
                 restclient.log(current_user_id, 'Access granted')
-            current_user_id = r['id']
             current_user_name = username
             print "Approved: %s" % user_approved
         current_cardid = card_id
