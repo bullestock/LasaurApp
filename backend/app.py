@@ -546,7 +546,6 @@ def job_submit_handler():
         return 'Access denied'
     if job_data and SerialManager.is_connected():
         SerialManager.queue_gcode(job_data)
-        restclient.log(current_user_id, 'Run job: '+re.sub('[\s+]', ' ', job_data)[:50])
         return "__ok__"
     else:
         return "serial disconnected"
@@ -602,29 +601,6 @@ def file_reader():
         # print "returning %d items as %d bytes." % (len(res['boundarys']), len(jsondata))
         return jsondata
     return "You missed a field."
-
-# def check_user_credentials(username, password):
-#     return username in allowed and allowed[username] == password
-#
-# @route('/login')
-# def login():
-#     username = request.forms.get('username')
-#     password = request.forms.get('password')
-#     if check_user_credentials(username, password):
-#         response.set_cookie("account", username, secret=COOKIE_KEY)
-#         return "Welcome %s! You are now logged in." % username
-#     else:
-#         return "Login failed."
-#
-# @route('/logout')
-# def login():
-#     username = request.forms.get('username')
-#     password = request.forms.get('password')
-#     if check_user_credentials(username, password):
-#         response.delete_cookie("account", username, secret=COOKIE_KEY)
-#         return "Welcome %s! You are now logged out." % username
-#     else:
-#         return "Already logged out."
 
 def warn(msg):
     global shutdown_msg
