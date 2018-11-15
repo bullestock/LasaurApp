@@ -3,6 +3,7 @@ import requests, json
 class RestClient:
 
     URL = 'https://panopticon.hal9k.dk/api/v1/'
+    #URL = 'https://10.42.3.11/api/v1/'
     TOKEN = '1c824b9d79e73074610d4e2b0097ccb461b66e5f32de091060b7e32b35ec0d53'
     
     def check_card(self, card_id):
