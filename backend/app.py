@@ -854,7 +854,6 @@ else:
             reader = RfidReader()
             reader.start()
         restclient = RestClient()
-        restclient.log(0, 'Backend started')
         if args.host_on_all_interfaces:
             run_with_callback('', NETWORK_PORT, reader, restclient, powertimer)
         else:
